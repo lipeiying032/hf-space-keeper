@@ -5,7 +5,7 @@ on:
   # GitHub Actions cron runs in UTC. 25 min interval ensures spaces never
   # hit HuggingFace's inactivity timeout (free tier sleeps after ~1-2 hours).
   schedule:
-    - cron: "0/25 * * * *"
+    - cron: "*/25 * * * *"
 
   # ── Manual trigger (useful for testing or emergency wake-up) ──────────────
   workflow_dispatch:
