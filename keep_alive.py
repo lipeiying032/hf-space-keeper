@@ -1,0 +1,69 @@
+name: 🤗 HuggingFace Space Keep-Alive
+
+on:
+  # ── Scheduled trigger (every 25 minutes) ──────────────────────────────────
+  # GitHub Actions cron runs in UTC. 25 min interval ensures spaces never
+  # hit HuggingFace's inactivity timeout (free tier sleeps after ~1-2 hours).
+  schedule:
+    - cron: "0/25 * * * *"
+
+  # ── Manual trigger (useful for testing or emergency wake-up) ──────────────
+  workflow_dispatch:
+    inputs:
+      space_ids_override:
+        description: "Override SPACE_IDS (comma-separated owner/name). Leave blank to use repo variable."
+        required: false
+        default: ""
+
+# Prevent overlapping runs
+concurrency:
+  group: keep-alive
+  cancel-in-progress: true
+
+jobs:
+  keep-alive:
+    name: Ping Spaces
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Set up Python ────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ── 3. Run keep-alive script ────────────────────────────────────────────
+      - name: Keep HuggingFace Spaces alive
+        env:
+          # SPACE_IDS comes from:
+          #   - Manual override input (if provided)
+          #   - Repository variable SPACE_IDS (Settings → Variables → Actions)
+          SPACE_IDS: ${{ github.event.inputs.space_ids_override || vars.SPACE_IDS }}
+
+          # HF_TOKEN comes from:
+          #   - Repository secret HF_TOKEN (Settings → Secrets → Actions)
+          #   - Required to wake sleeping spaces via HuggingFace API
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
+        run: |
+          echo "Python version: $(python --version)"
+          echo "Spaces configured: $SPACE_IDS"
+          python keep_alive.py
+
+      # ── 4. On failure: print diagnostic info ────────────────────────────────
+      - name: Diagnostic info on failure
+        if: failure()
+        run: |
+          echo "::error::One or more spaces failed to ping."
+          echo "Check the logs above for details."
+          echo ""
+          echo "Common causes:"
+          echo "  - SPACE_IDS variable not set in repo settings"
+          echo "  - HF_TOKEN secret missing or expired"
+          echo "  - Space has been deleted or renamed"
+          echo "  - HuggingFace API is temporarily unavailable"
