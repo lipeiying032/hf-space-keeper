@@ -1,4 +1,4 @@
-name: 🤗 HuggingFace Space Keep-Alive
+name: HuggingFace Space Keep-Alive
 
 on:
   # ── Scheduled trigger (every 25 minutes) ──────────────────────────────────
